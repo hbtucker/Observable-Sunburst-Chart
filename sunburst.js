@@ -1,21 +1,18 @@
 function _chart(d3, data) {
+  // Function to check system dark mode preference
+  function prefersDarkMode() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
   // Specify the chart's dimensions.
-let width = Math.min(window.innerWidth, window.innerHeight) * 0.8;
-let height = width;
-let radius = width / 9;
+  let width = Math.min(window.innerWidth, window.innerHeight) * 0.8;
+  let height = width;
+  let radius = width / 9;
 
   // Create the color scale with richer colors
   const richerColors = [
-    "#FF9AA2", // Rich coral
-    "#A8D8B9", // Rich sage
-    "#8AC6D1", // Rich sky blue
-    "#FFDAC1", // Rich peach
-    "#E2F0CB", // Rich lime
-    "#B5EAD7", // Rich mint
-    "#C7CEEA", // Rich periwinkle
-    "#F6D5E5", // Rich rose
-    "#FFE5B4", // Rich cream
-    "#D4A5A5"  // Rich mauve
+    "#FF9AA2", "#A8D8B9", "#8AC6D1", "#FFDAC1", "#E2F0CB",
+    "#B5EAD7", "#C7CEEA", "#F6D5E5", "#FFE5B4", "#D4A5A5"
   ];
 
   const darkerColors = [
@@ -23,9 +20,11 @@ let radius = width / 9;
     "#5A6D90", "#688092", "#809D95", "#96A39C"
   ];
 
+  let isDarkMode = prefersDarkMode();
+
   let color = d3.scaleOrdinal()
     .domain(data.children.map(d => d.name))
-    .range(richerColors);
+    .range(isDarkMode ? darkerColors : richerColors);
 
   // Compute the layout.
   const hierarchy = d3
@@ -54,7 +53,7 @@ let radius = width / 9;
     .style("font-family", "'Poppins', sans-serif")
     .attr(
       "style",
-      `max-width: 100%; height: auto; display: block; margin: 0 -8px; background: #191919; cursor: pointer; font-family: 'Poppins', sans-serif;`
+      `max-width: 100%; height: auto; display: block; margin: 0 -8px; background: ${isDarkMode ? '#202020' : '#fff'}; cursor: pointer; font-family: 'Poppins', sans-serif;`
     );
 
   // Append the arcs.
@@ -120,6 +119,7 @@ let radius = width / 9;
     .attr("fill-opacity", (d) => +labelVisible(d.current))
     .attr("transform", (d) => labelTransform(d.current))
     .style("font-size", (d) => `${calculateFontSize(d)}px`)
+    .attr("fill", isDarkMode ? "white" : "black")
     .each(function(d) {
       const lines = insertLineBreaks(d.data.name);
       d3.select(this).selectAll("tspan")
@@ -149,7 +149,7 @@ let radius = width / 9;
     .attr("y", -10)
     .attr("width", 80)
     .attr("height", 20)
-    .attr("fill", "#f6f6f6")
+    .attr("fill", isDarkMode ? "#333" : "#f6f6f6")
     .attr("rx", 5)
     .attr("ry", 5)
     .attr("fill-opacity", 0);
@@ -159,12 +159,13 @@ let radius = width / 9;
     .attr("dy", "0.35em")
     .attr("font-size", "7px")
     .attr("fill-opacity", 0)
+    .attr("fill", isDarkMode ? "white" : "black")
     .text("Go to previous layer");
 
   parent
     .on("mouseover", () => {
       tooltipRect.attr("fill-opacity", 0.5);
-      tooltipText.attr("fill-opacity", 0.5);
+      tooltipText.attr("fill-opacity", 1);
     })
     .on("mouseout", () => {
       tooltipRect.attr("fill-opacity", 0);
@@ -252,12 +253,12 @@ let radius = width / 9;
     return `rotate(${x - 90}) translate(${y},0) rotate(${-x + 90})`;
   }
 
-// Dark mode toggle functionality
-  function updateColors(isLightMode) {
-    const textColor = isLightMode ? 'black' : 'white';
-    const backgroundColor = isLightMode ? '#fff' : '#191919';
+  // Function to update colors based on dark mode
+  function updateColors(isDarkMode) {
+    const textColor = isDarkMode ? 'white' : 'black';
+    const backgroundColor = isDarkMode ? '#202020' : '#fff';
     
-    color.range(isLightMode ? richerColors : darkerColors);
+    color.range(isDarkMode ? darkerColors : richerColors);
 
     svg.attr("style", `max-width: 100%; height: auto; display: block; margin: 0 -8px; background: ${backgroundColor}; cursor: pointer; font-family: 'Poppins', sans-serif;`);
 
@@ -268,32 +269,20 @@ let radius = width / 9;
 
     label.attr("fill", textColor);
     tooltipText.attr("fill", textColor);
-    tooltipRect.attr("fill", isLightMode ? "#f6f6f6" : "#333");
+    tooltipRect.attr("fill", isDarkMode ? "#333" : "#f6f6f6");
 
     // Update logo
     const logo = document.getElementById('logo');
     if (logo) {
-      logo.src = isLightMode ? 'logo.png' : 'dark-logo.png';
-    }
-
-    // Update toggle button text
-    const darkModeToggle = document.getElementById('darkModeToggle');
-    if (darkModeToggle) {
-      darkModeToggle.textContent = isLightMode ? "Dark Mode" : "Light Mode";
+      logo.src = isDarkMode ? 'dark-logo.png' : 'logo.png';
     }
   }
 
-  // Set up event listener for dark mode toggle
-  const darkModeToggle = document.getElementById('darkModeToggle');
-  if (darkModeToggle) {
-    darkModeToggle.addEventListener('click', () => {
-      const isLightMode = document.body.classList.toggle('light-mode');
-      updateColors(isLightMode);
-    });
-  }
-
-  // Initialize with dark mode
-  updateColors(false);
+  // Listen for changes in system color scheme
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  mediaQuery.addListener((e) => {
+    updateColors(e.matches);
+  });
 
   return svg.node();
 }
